@@ -12,6 +12,7 @@ import net.neoforged.bus.api.Event;
 import net.neoforged.bus.api.EventListener;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.ModLoader;
 import net.neoforged.fml.ModLoadingException;
 import net.neoforged.fml.ModLoadingStage;
 import net.neoforged.fml.event.IModBusEvent;
@@ -83,34 +84,7 @@ public class FMLModContainer extends ModContainer
             }
             var constructor = constructors[0];
 
-            // Allowed arguments for injection via constructor
-            Map<Class<?>, Object> allowedConstructorArgs = Map.of(
-                    IEventBus.class, eventBus,
-                    ModContainer.class, this,
-                    FMLModContainer.class, this,
-                    Dist.class, FMLLoader.getDist());
-
-            var parameterTypes = constructor.getParameterTypes();
-            Object[] constructorArgs = new Object[parameterTypes.length];
-            Set<Class<?>> foundArgs = new HashSet<>();
-
-            for (int i = 0; i < parameterTypes.length; i++) {
-                Object argInstance = allowedConstructorArgs.get(parameterTypes[i]);
-                if (argInstance == null) {
-                    throw new RuntimeException("Mod constructor has unsupported argument " + parameterTypes[i] + ". Allowed optional argument classes: " +
-                            allowedConstructorArgs.keySet().stream().map(Class::getSimpleName).collect(Collectors.joining(", ")));
-                }
-
-                if (foundArgs.contains(parameterTypes[i])) {
-                    throw new RuntimeException("Duplicate mod constructor argument type: " + parameterTypes[i]);
-                }
-
-                foundArgs.add(parameterTypes[i]);
-                constructorArgs[i] = argInstance;
-            }
-
-            // All arguments are found
-            this.modInstance = constructor.newInstance(constructorArgs);
+            this.modInstance = ModLoader.get().getParameterManager().create(parameters, constructor);
 
             LOGGER.trace(LOADING, "Loaded mod instance {} of type {}", getModId(), modClass.getName());
         }

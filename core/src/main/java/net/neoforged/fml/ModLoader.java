@@ -19,6 +19,7 @@ import net.neoforged.fml.loading.moddiscovery.ModFileInfo;
 import net.neoforged.fml.loading.moddiscovery.ModInfo;
 import net.neoforged.fml.loading.progress.ProgressMeter;
 import net.neoforged.fml.loading.progress.StartupNotificationManager;
+import net.neoforged.fml.parameters.ModParameterManager;
 import net.neoforged.neoforgespi.language.IModInfo;
 import net.neoforged.neoforgespi.language.IModLanguageProvider;
 import net.neoforged.neoforgespi.locating.ForgeFeature;
@@ -84,6 +85,7 @@ public class ModLoader
     private final List<ModLoadingException> loadingExceptions;
     private final List<ModLoadingWarning> loadingWarnings;
     private final ModStateManager stateManager;
+    private final ModParameterManager parameterManager;
     private boolean loadingStateValid;
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     private final Optional<Consumer<String>> statusConsumer = StartupNotificationManager.modLoaderConsumer();
@@ -106,6 +108,7 @@ public class ModLoader
                 .map(modFileInfo -> new ModLoadingException(null, ModLoadingStage.VALIDATE, "fml.modloading.missinglicense", null, modFileInfo.getFile()))
                 .forEach(this.loadingExceptions::add);
         this.stateManager = new ModStateManager();
+        this.parameterManager = new ModParameterManager(FMLLoader.getGameLayer());
         CrashReportCallables.registerCrashCallable("ModLauncher", FMLLoader::getLauncherInfo);
         CrashReportCallables.registerCrashCallable("ModLauncher launch target", FMLLoader::launcherHandlerName);
         CrashReportCallables.registerCrashCallable("ModLauncher naming", FMLLoader::getNaming);
@@ -306,6 +309,10 @@ public class ModLoader
      */
     public static boolean isLoadingStateValid() {
         return get().loadingStateValid;
+    }
+
+    public ModParameterManager getParameterManager() {
+        return parameterManager;
     }
 
     public boolean hasCompletedState(final String stateName) {

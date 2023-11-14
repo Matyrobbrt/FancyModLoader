@@ -12,6 +12,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.config.IConfigEvent;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.IModBusEvent;
+import net.neoforged.fml.loading.FMLLoader;
 import net.neoforged.fml.loading.progress.ProgressMeter;
 import net.neoforged.neoforgespi.language.IModInfo;
 import org.apache.logging.log4j.LogManager;
@@ -57,6 +58,7 @@ public abstract class ModContainer
     protected final Map<ModLoadingStage, Runnable> activityMap = new HashMap<>();
     protected final Map<Class<? extends IExtensionPoint<?>>, Supplier<?>> extensionPoints = new IdentityHashMap<>();
     protected final EnumMap<ModConfig.Type, ModConfig> configs = new EnumMap<>(ModConfig.Type.class);
+    protected Map<Class<?>, Object> parameters;
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     protected Optional<Consumer<IConfigEvent>> configHandler = Optional.empty();
 
@@ -67,6 +69,7 @@ public abstract class ModContainer
         this.namespace = this.modId;
         this.modInfo = info;
         this.modLoadingStage = ModLoadingStage.CONSTRUCT;
+        this.activityMap.put(ModLoadingStage.CONSTRUCT, () -> this.parameters = ModLoader.get().parameterManager.provideParameters(this));
 
         final String displayTestString = info.getConfig().<String>getConfigElement("displayTest").orElse("MATCH_VERSION"); // missing defaults to DEFAULT type
         Supplier<IExtensionPoint.DisplayTest> displayTestSupplier = switch (displayTestString) {
@@ -221,5 +224,15 @@ public abstract class ModContainer
             LOGGER.error(LOADING,"Caught exception during event {} dispatch for modid {}", e, this.getModId(), t);
             throw new ModLoadingException(modInfo, modLoadingStage, "fml.modloading.errorduringevent", t);
         }
+    }
+
+    /**
+     * {@return a parameter of this container of the given {@code type}, or {@code null} if one doesn't exist}
+     *
+     * @param <T> the type of the parameter
+     */
+    @Nullable
+    public final <T> T getParameter(Class<T> type) {
+        return (T) parameters.get(type);
     }
 }
