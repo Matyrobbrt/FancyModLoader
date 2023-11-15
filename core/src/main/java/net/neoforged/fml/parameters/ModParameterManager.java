@@ -9,6 +9,7 @@ import net.neoforged.fml.ModContainer;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -18,11 +19,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ModParameterManager {
-    private final List<IModParameter<?>> parameters;
+    private final List<IModParameterProvider> parameters;
 
     public ModParameterManager(ModuleLayer layer) {
-        this.parameters = ServiceLoader.load(layer, IModParameter.class).stream()
-                .<IModParameter<?>>map(ServiceLoader.Provider::get)
+        this.parameters = ServiceLoader.load(layer, IModParameterProvider.class).stream()
+                .map(ServiceLoader.Provider::get)
                 .toList();
     }
 
@@ -52,18 +53,26 @@ public class ModParameterManager {
 
     public Map<Class<?>, Object> provideParameters(ModContainer container) {
         final Map<Class<?>, Object> parameters = new IdentityHashMap<>();
+        final Map<Class<?>, IModParameterProvider> sources = new IdentityHashMap<>();
         this.parameters.forEach(param -> {
-            final var provided = param.provide(container);
-            for (final var type : param.types(container)) {
-                if (!type.isInstance(provided)) {
-                    throw new UnsupportedOperationException("%s attempted to provide parameter of type %s, that is not an instance of expected %s".formatted(param, provided.getClass(), type));
-                }
+            final var builder = new IModParameterBuilder() {
 
-                if (parameters.containsKey(type)) {
-                    throw new UnsupportedOperationException("Two parameters of the same type %s were attempted to be provided by %s and %s".formatted(type, parameters.get(type).getClass(), provided.getClass()));
+                @Override
+                public <T> void addParameter(T provided, Collection<Class<? extends T>> types) {
+                    for (final var type : types) {
+                        if (!type.isInstance(provided)) {
+                            throw new IllegalArgumentException("%s attempted to provide parameter of type %s, that is not an instance of expected %s".formatted(param, provided.getClass(), type));
+                        }
+
+                        if (parameters.containsKey(type)) {
+                            throw new UnsupportedOperationException("Two parameters of the same type %s were attempted to be provided by %s and %s".formatted(type, sources.get(type), param.getClass()));
+                        }
+                        sources.put(type, param);
+                        parameters.put(type, provided);
+                    }
                 }
-                parameters.put(type, provided);
-            }
+            };
+            param.provide(container, builder);
         });
         return Map.copyOf(parameters);
     }

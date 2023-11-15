@@ -69,7 +69,10 @@ public abstract class ModContainer
         this.namespace = this.modId;
         this.modInfo = info;
         this.modLoadingStage = ModLoadingStage.CONSTRUCT;
-        this.activityMap.put(ModLoadingStage.CONSTRUCT, () -> this.parameters = ModLoader.get().parameterManager.provideParameters(this));
+        this.activityMap.put(ModLoadingStage.CONSTRUCT, () -> {
+            LOGGER.trace(LOADING, "Computing parameters for mod container with id {}", modId);
+            this.parameters = ModLoader.get().getParameterManager().provideParameters(this);
+        });
 
         final String displayTestString = info.getConfig().<String>getConfigElement("displayTest").orElse("MATCH_VERSION"); // missing defaults to DEFAULT type
         Supplier<IExtensionPoint.DisplayTest> displayTestSupplier = switch (displayTestString) {
@@ -232,6 +235,7 @@ public abstract class ModContainer
      * @param <T> the type of the parameter
      */
     @Nullable
+    @SuppressWarnings("unchecked")
     public final <T> T getParameter(Class<T> type) {
         return (T) parameters.get(type);
     }
