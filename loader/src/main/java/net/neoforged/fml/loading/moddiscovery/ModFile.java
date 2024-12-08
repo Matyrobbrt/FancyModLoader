@@ -68,7 +68,7 @@ public class ModFile implements IModFile {
 
     private final String[] cacheKeyComponents;
 
-    private volatile boolean cacheComputed;
+    private volatile boolean cacheComputed = false;
     private String cacheKey;
 
     public ModFile(SecureJar jar, final ModFileInfoParser parser, ModFileDiscoveryAttributes attributes, String... cacheKeyComponents) {
@@ -89,25 +89,26 @@ public class ModFile implements IModFile {
 
     @Nullable
     public String getCacheKey() {
-        if (!cacheComputed) {
-            synchronized (this) {
-                if (this.cacheKey == null && Files.isRegularFile(jar.getPrimaryPath())) {
-                    try {
-                        var hasher = Hashing.sha256().newHasher()
-                                .putBytes(Files.readAllBytes(jar.getPrimaryPath()));
-                        for (int i = 0; i < cacheKeyComponents.length; i++) {
-                            hasher.putString(cacheKeyComponents[i], StandardCharsets.UTF_8);
-                        }
-                        this.cacheKey = hasher.hash().toString();
-
-                        cacheComputed = true;
-                    } catch (Exception exception) {
-                        throw new RuntimeException(exception);
+        if (cacheComputed) return cacheKey;
+        synchronized (this) {
+            var jarPath = jar.getPrimaryPath().toAbsolutePath();
+            if (this.cacheKey == null && Files.isRegularFile(jarPath)) {
+                try {
+                    var hasher = Hashing.sha256().newHasher();
+                    hasher.putString(jarPath.toString(), StandardCharsets.UTF_8);
+                    hasher.putLong(Files.getLastModifiedTime(jar.getPrimaryPath()).toMillis());
+                    hasher.putLong(Files.size(jarPath));
+                    for (int i = 0; i < cacheKeyComponents.length; i++) {
+                        hasher.putString(cacheKeyComponents[i], StandardCharsets.UTF_8);
                     }
+                    this.cacheKey = hasher.hash().toString();
+                } catch (Exception exception) {
+                    throw new RuntimeException(exception);
                 }
             }
+            cacheComputed = true;
+            return cacheKey;
         }
-        return cacheKey;
     }
 
     @Override

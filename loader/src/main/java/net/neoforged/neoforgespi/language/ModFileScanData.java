@@ -9,11 +9,13 @@ import net.neoforged.fml.loading.modscan.ModAnnotation;
 import org.objectweb.asm.Type;
 
 import javax.annotation.Nullable;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -66,7 +68,11 @@ public class ModFileScanData {
         stream.writeInt(1);
         writeCollection(stream, classes.size(), classes, (st, cls) -> {
             st.writeUTF(cls.clazz.getInternalName());
-            st.writeUTF(cls.parent.getInternalName());
+            if (cls.parent == null) {
+                st.writeUTF("\0");
+            } else {
+                st.writeUTF(cls.parent.getInternalName());
+            }
             writeCollection(st, cls.interfaces.size(), cls.interfaces, (st1, i) -> st1.writeUTF(i.getInternalName()));
         });
         writeCollection(stream, annotations.size(), annotations, (st, ann) -> {
@@ -90,7 +96,13 @@ public class ModFileScanData {
         var classes = new LinkedHashSet<ClassData>(classesCount);
         while (classesCount > 0) {
             var type = Type.getObjectType(stream.readUTF());
-            var parent = Type.getObjectType(stream.readUTF());
+            var parentName = stream.readUTF();
+            Type parent;
+            if (parentName.length() == 1 && parentName.charAt(0) == '\0') {
+                parent = null;
+            } else {
+                parent = Type.getObjectType(parentName);
+            }
             var interfaces = readCollection(stream, size -> new HashSet<Type>(size), (s, set) -> set.add(Type.getObjectType(s.readUTF())));
             classes.add(new ClassData(type, parent, interfaces));
             classesCount--;
@@ -99,15 +111,22 @@ public class ModFileScanData {
         var annotationCount = stream.readInt();
         var annotations = new LinkedHashSet<AnnotationData>(annotationCount);
         while (annotationCount > 0) {
+            var annotation = stream.readUTF();
+            var type = stream.readByte();
+            var clazz = stream.readUTF();
+            var name = stream.readUTF();
             annotations.add(new AnnotationData(
-                    Type.getObjectType(stream.readUTF()),
-                    ElementType.values()[stream.readByte()],
-                    Type.getObjectType(stream.readUTF()),
-                    stream.readUTF(),
+                    Type.getObjectType(annotation),
+                    ElementType.values()[type],
+                    Type.getObjectType(clazz),
+                    name,
                     readCollection(
                             stream,
                             HashMap::new,
-                            (st, map) -> map.put(st.readUTF(), decodeNested(st))
+                            (st, map) -> {
+                                var key = st.readUTF();
+                                map.put(key, decodeNested(st));
+                            }
                     )
             ));
             annotationCount--;
@@ -260,56 +279,56 @@ public class ModFileScanData {
                 });
             }
             case byte[] b -> {
-                stream.writeInt(13);
+                stream.writeByte(13);
                 stream.writeInt(b.length);
                 for (int i = 0; i < b.length; i++) {
                     stream.writeByte(b[i]);
                 }
             }
             case boolean[] b -> {
-                stream.writeInt(14);
+                stream.writeByte(14);
                 stream.writeInt(b.length);
                 for (int i = 0; i < b.length; i++) {
                     stream.writeBoolean(b[i]);
                 }
             }
             case short[] b -> {
-                stream.writeInt(15);
+                stream.writeByte(15);
                 stream.writeInt(b.length);
                 for (int i = 0; i < b.length; i++) {
                     stream.writeShort(b[i]);
                 }
             }
             case char[] b -> {
-                stream.writeInt(16);
+                stream.writeByte(16);
                 stream.writeInt(b.length);
                 for (int i = 0; i < b.length; i++) {
                     stream.writeChar(b[i]);
                 }
             }
             case int[] b -> {
-                stream.writeInt(17);
+                stream.writeByte(17);
                 stream.writeInt(b.length);
                 for (int i = 0; i < b.length; i++) {
                     stream.writeInt(b[i]);
                 }
             }
             case long[] b -> {
-                stream.writeInt(18);
+                stream.writeByte(18);
                 stream.writeInt(b.length);
                 for (int i = 0; i < b.length; i++) {
                     stream.writeLong(b[i]);
                 }
             }
             case double[] b -> {
-                stream.writeInt(19);
+                stream.writeByte(19);
                 stream.writeInt(b.length);
                 for (int i = 0; i < b.length; i++) {
                     stream.writeDouble(b[i]);
                 }
             }
             case float[] b -> {
-                stream.writeInt(20);
+                stream.writeByte(20);
                 stream.writeInt(b.length);
                 for (int i = 0; i < b.length; i++) {
                     stream.writeFloat(b[i]);

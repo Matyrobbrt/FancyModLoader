@@ -41,6 +41,17 @@ public interface IModFile {
     /**
      * Builds a new mod file instance depending on the current runtime.
      *
+     * @param jar    The secure jar to load the mod file from.
+     * @param parser The parser which is responsible for parsing the metadata of the file itself.
+     * @return The mod file.
+     */
+    static IModFile create(SecureJar jar, ModFileInfoParser parser, String... cacheKeyComponents) throws InvalidModFileException {
+        return new ModFile(jar, parser, ModFileDiscoveryAttributes.DEFAULT, cacheKeyComponents);
+    }
+
+    /**
+     * Builds a new mod file instance depending on the current runtime.
+     *
      * @param jar        The secure jar to load the mod file from.
      * @param parser     The parser which is responsible for parsing the metadata of the file itself.
      * @param attributes Additional attributes of the modfile.

@@ -75,7 +75,7 @@ public class NeoForgeDevProvider implements IModFileCandidateLocator {
 
         var mcJarMetadata = new ModJarMetadata(mcJarContents);
         var mcSecureJar = SecureJar.from(mcJarContents, mcJarMetadata);
-        var minecraftModFile = IModFile.create(mcSecureJar, MinecraftModInfo::buildMinecraftModInfo);
+        var minecraftModFile = IModFile.create(mcSecureJar, MinecraftModInfo::buildMinecraftModInfo, "minecraft");
         mcJarMetadata.setModFile(minecraftModFile);
         pipeline.addModFile(minecraftModFile);
 
@@ -89,7 +89,7 @@ public class NeoForgeDevProvider implements IModFileCandidateLocator {
                     return false;
                 })
                 .build();
-        pipeline.addModFile(JarModsDotTomlModFileReader.createModFile(neoforgeJarContents, ModFileDiscoveryAttributes.DEFAULT));
+        pipeline.addModFile(JarModsDotTomlModFileReader.createModFile(neoforgeJarContents, ModFileDiscoveryAttributes.DEFAULT, "neoforge"));
     }
 
     private static String[] getNeoForgeSpecificPathPrefixes() {

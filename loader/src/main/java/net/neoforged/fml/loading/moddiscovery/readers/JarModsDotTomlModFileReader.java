@@ -36,17 +36,17 @@ public class JarModsDotTomlModFileReader implements IModFileReader {
     public static final String MODS_TOML = "META-INF/neoforge.mods.toml";
     public static final String MANIFEST = "META-INF/MANIFEST.MF";
 
-    public static IModFile createModFile(JarContents contents, ModFileDiscoveryAttributes discoveryAttributes) {
+    public static IModFile createModFile(JarContents contents, ModFileDiscoveryAttributes discoveryAttributes, String... cacheKeyComponents) {
         var type = getModType(contents);
         IModFile mod;
         if (contents.findFile(MODS_TOML).isPresent()) {
             LOGGER.debug(LogMarkers.SCAN, "Found {} mod of type {}: {}", MODS_TOML, type, contents.getPrimaryPath());
             var mjm = new ModJarMetadata(contents);
-            mod = new ModFile(SecureJar.from(contents, mjm), ModFileParser::modsTomlParser, discoveryAttributes);
+            mod = new ModFile(SecureJar.from(contents, mjm), ModFileParser::modsTomlParser, discoveryAttributes, cacheKeyComponents);
             mjm.setModFile(mod);
         } else if (type != null) {
             LOGGER.debug(LogMarkers.SCAN, "Found {} mod of type {}: {}", MANIFEST, type, contents.getPrimaryPath());
-            mod = new ModFile(SecureJar.from(contents), JarModsDotTomlModFileReader::manifestParser, type, discoveryAttributes);
+            mod = new ModFile(SecureJar.from(contents), JarModsDotTomlModFileReader::manifestParser, type, discoveryAttributes, cacheKeyComponents);
         } else {
             return null;
         }
